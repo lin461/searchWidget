@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Search Widget</title>
+	<style>
+		#root {
+			width: 400px;
+			margin: 0;
+			padding: 0;
+		}
+
+		#search_form {
+			border: 1px solid #ccc;
+			width: 390px;
+			height: 20px;
+			margin: 0;
+			padding: 5px;
+			display: flex;
+			flex-wrap: nowrap;
+		}
+
+		#search_bar {
+			background: transparent url(https://d30y9cdsu7xlg0.cloudfront.net/png/14173-200.png) no-repeat left 2px top 5px;
+	    background-size: 30px 30px;
+	    padding: 5px 2rem 5px 34px;
+	    font-size: 1.8rem;
+	    width: 20rem;
+	    color: black;
+	    border: 1px solid black;
+		}
+
+		#clear_btn {
+			display: none;
+	    position: absolute;
+	    top: 1.1rem;
+	    left: 22rem;
+	    width: 30px;
+	    height: 30px;
+	    background-repeat: no-repeat;
+	    background-size: 30px 30px;
+	    border: none;
+	    background-image: url(https://d30y9cdsu7xlg0.cloudfront.net/png/52944-200.png);
+		}
+
+		#items_list {
+			list-style-type: none;
+			margin: 0;
+			padding: 10px 0px;
+			display: none;
+			border: 2px solid #000;
+			width: 384px;
+			height: 100px;
+			font-size: 1.2em;
+			white-space: nowrap;
+			overflow: scroll;
+		}
+	</style>
+</head>
+<body>
+	<div id="root">
+		<input id="search_bar" type="text" name="term" />
+		<button id="clear_btn"> X </button>
+		<ul id="items_list" tabindex="0"></ul>
+	</div>
+</body>
+<script>
+	(function(document) {
+		'use strict';
+
+		const rootEle = document.getElementById('root');
+		const search_bar = document.getElementById('search_bar');
+		const items_list = document.getElementById('items_list');
+		const clear_btn = document.getElementById('clear_btn');
+
+		let term = '';
+		let items = [];
+		let select = -1;
+
+		function renderList(items) {
+			if (items.length) {
+				while (items_list.firstChild) {
+					items_list.removeChild(items_list.firstChild);
+				}
+				items.forEach(function(item) {
+					const i = item.title.indexOf(term);
+					if (i > -1) {
+						const li = document.createElement('li');
+						const span = document.createElement('span');
+						span.innerHTML = `${item.title.slice(0, i)}<b>${term}</b>${item.title.slice(i + term.length)}`;
+						span.style.margin = '0px 10px';
+						li.appendChild(span);
+						items_list.appendChild(li);
+					}
+				});
+				items_list.style.display = 'block';
+				clear_btn.style.display = 'block';
+			} else {
+				items_list.style.display = 'none';
+				clear_btn.style.display = 'none';
+			}
+			select = -1;
+		}
+
+		function selectItem(key) {
+			if (key === 'ArrowDown') {
+				if (select === -1) {
+					items_list.firstChild.firstChild.style.backgroundColor = '#e2e2e2';
+					select++;
+				} else if (select < items.length - 1){
+					items_list.children[select].firstChild.style.backgroundColor = '#ffffff';
+					items_list.children[++select].firstChild.style.backgroundColor = '#e2e2e2';
+				}
+				items_list.children[select].scrollIntoView();
+
+			} else if (key === 'ArrowUp') {
+				if (select) {
+					items_list.children[select].firstChild.style.backgroundColor = '#ffffff';
+					items_list.children[--select].firstChild.style.backgroundColor = '#e2e2e2';
+				}
+				items_list.children[select].firstChild.scrollIntoView();
+			}
+		}
+
+		search_bar.addEventListener('keyup', event => {
+			if (!search_bar.value) {
+				items_list.style.display = 'none';
+				clear_btn.style.display = 'none';
+				if (term) {
+					term = '';
+				}
+			} else if (term !== search_bar.value) {
+				term = search_bar.value;
+				const xhttp = new XMLHttpRequest();
+			  xhttp.onreadystatechange = function() {
+					if (this.readyState == 4 && this.status == 200) {
+			   		const data = JSON.parse(this.responseText);
+			   		items = data.filter(function(item) {
+							return item.title.indexOf(term) > -1;
+						});
+			   		renderList(items);
+			  	}
+			  }
+				xhttp.open("GET", "https://jsonplaceholder.typicode.com/albums", true);
+				xhttp.send();
+			} else {
+				selectItem(event.key);
+			}
+		});
+
+		search_bar.addEventListener('keydown', event => {
+			if(event.which === 13) {
+				items_list.style.display = 'none';
+				setTimeout(() => {
+					search_bar.value = items_list.children[select].textContent;
+				}, 100);
+			}
+		});
+
+
+		items_list.addEventListener('keyup', event => selectItem(event.key));
+
+		items_list.addEventListener('click', event => search_bar.value = event.target.textContent);
+
+		function clearSearchBar() {
+			search_bar.value = '';
+			term = '';
+			items = [];
+			search_bar.focus();
+			items_list.style.display = 'none';
+			clear_btn.style.display = 'none';
+		}
+
+		clear_btn.addEventListener('click', clearSearchBar);
+
+		rootEle.addEventListener('click', event => {
+			event.stopPropagation();
+			if (items.length) {
+				items_list.style.display = 'block';
+			}
+		});
+
+		window.addEventListener('click', () => items_list.style.display = 'none');
+
+		window.addEventListener('keyup', event => {
+			if (event.key === 'Escape') {
+				if (document.activeElement === search_bar) {
+					search_bar.value = '';
+					term = '';
+					items = [];
+					renderList(items);
+				} else {
+					search_bar.focus();
+					items_list.style.display = 'block';
+				}
+			}
+		});
+	})(document);
+</script>
+</html>
